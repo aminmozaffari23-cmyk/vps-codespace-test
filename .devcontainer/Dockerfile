@@ -4,9 +4,9 @@ FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04
 # 1. Install System Init, Networking, VPN, and Sysadmin Packages
 # =============================================================================
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    # System init & process management
-    systemd \
-    systemd-sysv \
+    # Python runtime (needed for systemctl replacement)
+    python3 \
+    # Process management & monitoring
     procps \
     cron \
     supervisor \
@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     dnsutils \
     traceroute \
     tcpdump \
-    # VPN & Tunneling dependencies (WireGuard, TUN/TAP tools)
+    # VPN & Tunneling dependencies (WireGuard, OpenVPN)
     wireguard-tools \
     kmod \
     openvpn \
@@ -28,7 +28,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libfuse2t64 \
     sshfs \
     util-linux \
-    # Common Utilities
+    # Utilities & Editors
     curl \
     wget \
     rsync \
@@ -42,29 +42,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # =============================================================================
-# 2. Fix Systemd for Container Boot
+# 2. Install systemctl replacement (Allows systemctl start/status in containers)
 # =============================================================================
-# Remove Microsoft's mock systemctl shim so genuine /bin/systemctl is used
-RUN rm -f /usr/local/bin/systemctl
-
-# Mask hardware-only systemd services to prevent container startup delays
-RUN systemctl mask \
-    dev-mqueue.mount \
-    sys-kernel-tracing.mount \
-    getty.target \
-    getty@tty1.service \
-    console-getty.service \
-    systemd-udevd.service \
-    systemd-udev-trigger.service \
-    systemd-modules-load.service
+RUN curl -fsSL https://raw.githubusercontent.com/gdraheim/docker-systemctl-replacement/master/files/docker/systemctl3.py -o /usr/local/bin/systemctl && \
+    chmod 755 /usr/local/bin/systemctl
 
 # =============================================================================
-# 3. Prepare Persistent Mountpoints & TUN Device Directory
+# 3. Prepare Directories
 # =============================================================================
 RUN mkdir -p /dev/net /data /mnt/storage
-
-# Set stop signal for clean systemd shutdowns
-STOPSIGNAL SIGRTMIN+3
-
-# Run genuine systemd as PID 1
-CMD ["/sbin/init"]

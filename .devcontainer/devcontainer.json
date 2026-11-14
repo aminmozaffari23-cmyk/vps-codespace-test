@@ -7,27 +7,19 @@
   },
 
   // =========================================================================
-  // 1. VPS INIT & PRIVILEGES
+  // 1. VPS PRIVILEGES & RUNTIME
   // =========================================================================
-  // overrideCommand: false allows /sbin/init (systemd) to run as PID 1
-  "overrideCommand": false,
-
   // privileged: true grants full raw hardware and kernel capabilities
+  // (allows iptables, tun creation, fuse mounting, and sysctl updates)
   "privileged": true,
 
   // Direct root access
   "remoteUser": "root",
 
   // =========================================================================
-  // 2. RUN ARGS: TUN, FUSE, SYSCTL, SHM-SIZE, ULIMITS & TRACING
+  // 2. RUN ARGS: TUN, FUSE, SHM-SIZE, ULIMITS & TRACING
   // =========================================================================
   "runArgs": [
-    // [TUN / TAP]: Virtual network interface for WireGuard, OpenVPN, Tailscale
-    "--device=/dev/net/tun",
-
-    // [FUSE]: Userspace filesystems for rclone (S3/Drive mount), sshfs, AppImage
-    "--device=/dev/fuse",
-
     // [SHARED MEMORY]: Expand /dev/shm from default 64MB to 4GB (prevents browser/ML/build crashes)
     "--shm-size=4g",
 
@@ -39,11 +31,7 @@
     "--cap-add=NET_ADMIN",
     "--cap-add=SYS_ADMIN",
     "--cap-add=SYS_PTRACE",
-    "--security-opt=seccomp=unconfined",
-
-    // [SYSCTL ROUTING]: Enable IPv4 forwarding (turn Codespace into a router/gateway)
-    "--sysctl=net.ipv4.ip_forward=1",
-    "--sysctl=net.ipv4.conf.all.src_valid_mark=1"
+    "--security-opt=seccomp=unconfined"
   ],
 
   // =========================================================================
@@ -80,11 +68,6 @@
       "installZsh": "true",
       "configureZshAsDefaultShell": "true"
     }
-
-    // --- ADDITIONAL TOGGLEABLE FEATURES ---
-    // "ghcr.io/tailscale/codespace/tailscale:1": {},
-    // "ghcr.io/devcontainers/features/python:1": { "version": "3.12" },
-    // "ghcr.io/devcontainers/features/node:1": { "version": "lts" }
   },
 
   // Recommended hardware specs (Supports optional GPU passthrough if available)

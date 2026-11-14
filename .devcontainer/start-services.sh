@@ -7,7 +7,7 @@ set -e
 
 echo "[VPS Boot] Starting system initialization..."
 
-# 1. Ensure /dev/net/tun device exists (for WireGuard, OpenVPN, Tailscale)
+# 1. Ensure /dev/net/tun exists (for WireGuard, OpenVPN, Tailscale)
 if [ ! -c /dev/net/tun ]; then
     echo "[VPS Boot] Initializing /dev/net/tun..."
     mkdir -p /dev/net
@@ -20,27 +20,19 @@ if [ -c /dev/fuse ]; then
     chmod 0666 /dev/fuse || true
 fi
 
-# 3. Initialize firewall rules
+# 3. Enable IP Forwarding at runtime (since --privileged is active)
+sysctl -w net.ipv4.ip_forward=1 2>/dev/null || true
+
+# 4. Initialize firewall rules
 if [ -f .devcontainer/init-firewall.sh ]; then
     bash .devcontainer/init-firewall.sh || true
 fi
 
-# 4. Check if systemd is active as PID 1
-if [ -d /run/systemd/system ]; then
-    echo "[VPS Boot] Systemd is active as PID 1!"
-    systemctl is-system-running || true
-    systemctl start cron.service || true
-    systemctl start ssh.service || true
-    if command -v nginx >/dev/null 2>&1; then
-        systemctl start nginx.service || true
-    fi
-else
-    echo "[VPS Boot] Running in container fallback mode (service/SysV)..."
-    service cron start || true
-    service ssh start || true
-    if command -v nginx >/dev/null 2>&1; then
-        service nginx start || true
-    fi
+# 5. Start background daemons via systemctl or service
+systemctl start cron 2>/dev/null || service cron start 2>/dev/null || true
+systemctl start ssh 2>/dev/null || service ssh start 2>/dev/null || true
+if command -v nginx >/dev/null 2>&1; then
+    systemctl start nginx 2>/dev/null || service nginx start 2>/dev/null || true
 fi
 
 echo "[VPS Boot] Capabilities and devices verified:"
