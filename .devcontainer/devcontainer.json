@@ -1,0 +1,173 @@
+{
+  "$schema": "https://raw.githubusercontent.com/devcontainers/spec/main/schemas/devContainer.schema.json",
+  "name": "Ultimate VPS Codespace (systemd, iptables, TUN, FUSE, OpenCode)",
+
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+
+  // =========================================================================
+  // 1. VPS INIT & PRIVILEGES
+  // =========================================================================
+  // overrideCommand: false allows /sbin/init (systemd) to run as PID 1
+  "overrideCommand": false,
+
+  // privileged: true grants full raw hardware and kernel capabilities
+  "privileged": true,
+
+  // Direct root access
+  "remoteUser": "root",
+
+  // =========================================================================
+  // 2. RUN ARGS: TUN, FUSE, SYSCTL, SHM-SIZE, ULIMITS & TRACING
+  // =========================================================================
+  "runArgs": [
+    // [TUN / TAP]: Virtual network interface for WireGuard, OpenVPN, Tailscale
+    "--device=/dev/net/tun",
+
+    // [FUSE]: Userspace filesystems for rclone (S3/Drive mount), sshfs, AppImage
+    "--device=/dev/fuse",
+
+    // [SHARED MEMORY]: Expand /dev/shm from default 64MB to 4GB (prevents browser/ML/build crashes)
+    "--shm-size=4g",
+
+    // [ULIMITS]: Increase open file and process limits (essential for servers/compilers)
+    "--ulimit", "nofile=65535:65535",
+    "--ulimit", "nproc=65535:65535",
+
+    // [CAPABILITIES]: Network administration, sysadmin, process tracing
+    "--cap-add=NET_ADMIN",
+    "--cap-add=SYS_ADMIN",
+    "--cap-add=SYS_PTRACE",
+    "--security-opt=seccomp=unconfined",
+
+    // [SYSCTL ROUTING]: Enable IPv4 forwarding (turn Codespace into a router/gateway)
+    "--sysctl=net.ipv4.ip_forward=1",
+    "--sysctl=net.ipv4.conf.all.src_valid_mark=1"
+  ],
+
+  // =========================================================================
+  // 3. PERSISTENT STORAGE (Survives full container rebuilds!)
+  // =========================================================================
+  "mounts": [
+    // Dedicated persistent storage for databases, downloads, or custom files
+    "source=codespace-vps-data,target=/data,type=volume",
+    // Docker volume cache (preserves pulled docker images across rebuilds)
+    "source=codespace-vps-docker,target=/var/lib/docker,type=volume"
+  ],
+
+  // =========================================================================
+  // 4. MODULAR FEATURES (Toggle ON/OFF)
+  // =========================================================================
+  "features": {
+    // Docker-in-Docker: Full embedded Docker daemon
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest",
+      "enableNonRootDocker": "true"
+    },
+
+    // SSH Server on port 2222
+    "ghcr.io/devcontainers/features/sshd:1": {
+      "version": "latest",
+      "port": "2222"
+    },
+
+    // GitHub CLI tool pre-authenticated
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+
+    // Zsh + sysadmin cli enhancements
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": "true",
+      "configureZshAsDefaultShell": "true"
+    }
+
+    // --- ADDITIONAL TOGGLEABLE FEATURES ---
+    // "ghcr.io/tailscale/codespace/tailscale:1": {},
+    // "ghcr.io/devcontainers/features/python:1": { "version": "3.12" },
+    // "ghcr.io/devcontainers/features/node:1": { "version": "lts" }
+  },
+
+  // Recommended hardware specs (Supports optional GPU passthrough if available)
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "8gb",
+    "storage": "32gb",
+    "gpu": "optional"
+  },
+
+  // Environment variables inside container
+  "containerEnv": {
+    "DEBIAN_FRONTEND": "noninteractive",
+    "CODESPACE_ROLE": "vps",
+    "TZ": "UTC"
+  },
+
+  // =========================================================================
+  // 5. NETWORKING & PORT FORWARDING
+  // =========================================================================
+  "forwardPorts": [
+    2222, // SSH daemon
+    80,   // HTTP Web server
+    443,  // HTTPS Web server
+    3000, // Dev web server
+    8080  // Custom API backend
+  ],
+
+  "portsAttributes": {
+    "80": {
+      "label": "Web Server (HTTP)",
+      "onAutoForward": "silent",
+      "visibility": "public"
+    },
+    "443": {
+      "label": "Web Server (HTTPS)",
+      "onAutoForward": "silent",
+      "visibility": "public"
+    },
+    "3000": {
+      "label": "App Port 3000",
+      "onAutoForward": "openBrowser",
+      "visibility": "public"
+    },
+    "8080": {
+      "label": "API Port 8080",
+      "onAutoForward": "silent",
+      "visibility": "public"
+    },
+    "2222": {
+      "label": "SSH Server",
+      "onAutoForward": "silent",
+      "visibility": "private"
+    }
+  },
+
+  // =========================================================================
+  // 6. LIFECYCLE SCRIPTS (Automatic Installation & Daemons)
+  // =========================================================================
+  // postCreateCommand: Runs ONCE at container creation (installs latest OpenCode)
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+
+  // postStartCommand: Runs EVERY time the Codespace boots or resumes
+  "postStartCommand": "bash .devcontainer/start-services.sh",
+
+  // =========================================================================
+  // 7. CUSTOMIZATIONS
+  // =========================================================================
+  "customizations": {
+    "codespaces": {
+      "openFiles": [
+        "README.md",
+        ".devcontainer/devcontainer.json"
+      ]
+    },
+    "vscode": {
+      "extensions": [
+        "ms-azuretools.vscode-docker",
+        "eamodio.gitlens"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "zsh"
+      }
+    }
+  }
+}
