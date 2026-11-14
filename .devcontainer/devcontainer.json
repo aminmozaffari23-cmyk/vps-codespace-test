@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/devcontainers/spec/main/schemas/devContainer.schema.json",
-  "name": "Ultimate VPS Codespace (systemd, iptables, TUN, FUSE, OpenCode)",
+  "name": "Ultimate VPS Codespace (systemctl, iptables, WireGuard, FUSE, Nginx, OpenCode)",
 
   "build": {
     "dockerfile": "Dockerfile"
@@ -10,14 +10,13 @@
   // 1. VPS PRIVILEGES & RUNTIME
   // =========================================================================
   // privileged: true grants full raw hardware and kernel capabilities
-  // (allows iptables, tun creation, fuse mounting, and sysctl updates)
   "privileged": true,
 
   // Direct root access
   "remoteUser": "root",
 
   // =========================================================================
-  // 2. RUN ARGS: TUN, FUSE, SHM-SIZE, ULIMITS & TRACING
+  // 2. RUN ARGS: SHM-SIZE, ULIMITS & TRACING
   // =========================================================================
   "runArgs": [
     // [SHARED MEMORY]: Expand /dev/shm from default 64MB to 4GB (prevents browser/ML/build crashes)
@@ -63,6 +62,11 @@
     // GitHub CLI tool pre-authenticated
     "ghcr.io/devcontainers/features/github-cli:1": {},
 
+    // Node.js LTS Runtime
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "lts"
+    },
+
     // Zsh + sysadmin cli enhancements
     "ghcr.io/devcontainers/features/common-utils:2": {
       "installZsh": "true",
@@ -70,7 +74,7 @@
     }
   },
 
-  // Recommended hardware specs (Supports optional GPU passthrough if available)
+  // Recommended hardware specs
   "hostRequirements": {
     "cpus": 4,
     "memory": "8gb",
@@ -82,7 +86,8 @@
   "containerEnv": {
     "DEBIAN_FRONTEND": "noninteractive",
     "CODESPACE_ROLE": "vps",
-    "TZ": "UTC"
+    "TZ": "UTC",
+    "GITHUB_USER": "aminmozaffari23-cmyk"
   },
 
   // =========================================================================
@@ -90,7 +95,7 @@
   // =========================================================================
   "forwardPorts": [
     2222, // SSH daemon
-    80,   // HTTP Web server
+    80,   // HTTP Web server (Nginx)
     443,  // HTTPS Web server
     3000, // Dev web server
     8080  // Custom API backend
@@ -125,12 +130,9 @@
   },
 
   // =========================================================================
-  // 6. LIFECYCLE SCRIPTS (Automatic Installation & Daemons)
+  // 6. LIFECYCLE SCRIPTS
   // =========================================================================
-  // postCreateCommand: Runs ONCE at container creation (installs latest OpenCode)
   "postCreateCommand": "bash .devcontainer/setup.sh",
-
-  // postStartCommand: Runs EVERY time the Codespace boots or resumes
   "postStartCommand": "bash .devcontainer/start-services.sh",
 
   // =========================================================================

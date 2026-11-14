@@ -1,16 +1,19 @@
 FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04
 
 # =============================================================================
-# 1. Install System Init, Networking, VPN, and Sysadmin Packages
+# 1. Install System Init, Networking, VPN, Web Server, and Sysadmin Packages
 # =============================================================================
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    # Python runtime (needed for systemctl replacement)
+    # Python runtime
     python3 \
-    # Process management & monitoring
+    python3-pip \
+    # Web server & Reverse proxy
+    nginx \
+    # Process management & scheduling
     procps \
     cron \
     supervisor \
-    # Networking & Firewalls
+    # Networking, Firewalls & Diagnostics
     iptables \
     iproute2 \
     ufw \
@@ -19,8 +22,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     dnsutils \
     traceroute \
     tcpdump \
-    # VPN & Tunneling dependencies (WireGuard, OpenVPN)
+    socat \
+    netcat-openbsd \
+    lsof \
+    mtr-tiny \
+    iperf3 \
+    jq \
+    # VPN & Tunneling dependencies (WireGuard, userspace wireguard-go, DNS resolvconf)
     wireguard-tools \
+    wireguard-go \
+    resolvconf \
     kmod \
     openvpn \
     # Storage & Userspace Filesystems (FUSE, Loop devices)
@@ -28,7 +39,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libfuse2t64 \
     sshfs \
     util-linux \
-    # Utilities & Editors
+    # Editors, Shells & Common Utilities
     curl \
     wget \
     rsync \
@@ -42,12 +53,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # =============================================================================
-# 2. Install systemctl replacement (Allows systemctl start/status in containers)
+# 2. Prepare Directories
 # =============================================================================
-RUN curl -fsSL https://raw.githubusercontent.com/gdraheim/docker-systemctl-replacement/master/files/docker/systemctl3.py -o /usr/local/bin/systemctl && \
-    chmod 755 /usr/local/bin/systemctl
-
-# =============================================================================
-# 3. Prepare Directories
-# =============================================================================
-RUN mkdir -p /dev/net /data /mnt/storage
+RUN mkdir -p /dev/net /data /mnt/storage /root/.ssh && chmod 700 /root/.ssh
